@@ -14,6 +14,7 @@ async def main():
     dp.include_routers(start.router)
     start.scheduler.start()
     config.include_routers(dp)
+    print('Бот запущен!')
     await dp.start_polling(bot, skip_updates=True)
 
 
