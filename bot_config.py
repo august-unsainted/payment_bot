@@ -3,6 +3,8 @@ from datetime import datetime
 
 from bot_constructor.bot_config import BotConfig
 
+from config import CHANNELS_NAMES
+
 config = BotConfig(name_in_start=True)
 db = config.db
 prices = config.jsons['price']
@@ -34,8 +36,9 @@ def load_price_messages():
         config.keyboards[key] = kb
 
 
-for channel in ('draw', 'text'):
+for channel in CHANNELS_NAMES.keys():
     config.keyboards[channel] = generate_price_kb(channel)
+
 load_price_messages()
 config.load_messages()
 config.test_mode = True

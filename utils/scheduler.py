@@ -1,13 +1,16 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 
+from aiogram import Bot
 from aiogram.types import User
 from apscheduler.jobstores.base import JobLookupError
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from bot_config import config
-from utils.user_actions import notify_user, remove_user
+from bot_config import config, texts
+from config import ADMIN
+from utils.database import update_payment
+from utils.user_actions import notify_user, remove_user, get_date, get_link
 
 jobstores = {'default': SQLAlchemyJobStore(url=f'sqlite:///{Path().cwd() / 'data/bot.db'}')}
 scheduler = AsyncIOScheduler(timezone='Asia/Irkutsk', jobstores=jobstores)
@@ -17,13 +20,14 @@ def start_scheduler():
     scheduler.start()
 
 
-def schedule_jobs(user: User, date: str):
-    end_date = datetime.strptime(date, '%Y-%m-%d %H:%M:%S')
+def schedule_jobs(user_id: int, name: str, date: str, channel: int):
+    end_date = get_date(date)
     delta = timedelta(seconds=30) if config.test_mode else timedelta(days=3)
-    scheduler.add_job(id=f'{user.id}_notify', trigger='date', run_date=end_date - delta,
-                      func=notify_user, args=[user.id], replace_existing=True)
-    scheduler.add_job(id=str(user.id), trigger='date', run_date=end_date,
-                      func=remove_user, args=[user.id, user.first_name], replace_existing=True)
+    job_id = f'{user_id}_{channel}'
+    scheduler.add_job(id=f'{job_id}_notify', trigger='date', run_date=end_date - delta,
+                      func=notify_user, args=[user_id], replace_existing=True)
+    scheduler.add_job(id=job_id, trigger='date', run_date=end_date,
+                      func=remove_user, args=[user_id, name, channel], replace_existing=True)
 
 
 def remove_job(job_id: int | str):
@@ -31,3 +35,16 @@ def remove_job(job_id: int | str):
         scheduler.remove_job(job_id)
     except JobLookupError:
         pass
+
+
+async def activate_sub(user_id: int, name: str, chat: int, bot: Bot):
+    result = update_payment(user_id, chat)
+    if not result:
+        await remove_user(user_id, name, chat)
+        return
+    remove_job(user_id)
+    end_date = result[0]['end_date']
+    if end_date:
+        schedule_jobs(user_id, name, end_date, chat)
+    text = texts.get('user_join').format(get_link(user_id, name))
+    await bot.send_message(chat_id=ADMIN, text=text, parse_mode='HTML')

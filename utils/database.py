@@ -2,18 +2,22 @@ from datetime import datetime
 from bot_config import db, config
 
 
+def get_active_sub(user_id: int, channel: int):
+    query = 'select * from payments where user_id = ? and channel = ? and status = "active"'
+    subs = db.execute_query(query, user_id, channel)
+    return subs[0] if subs else None
+
+
 def insert_payment(cost: int, period: int, user_id: int, channel: int) -> int:
-    query = 'select id, period from payments where user_id = ? and channel = ? and status = "active"'
-    prev_payments = db.execute_query(query, user_id, channel)
-    if prev_payments:
-        prev_pay = prev_payments[0]
-        period += prev_pay['period']
-        update_status('inactive', prev_pay['id'])
+    active_payment = get_active_sub(user_id, channel)
+    if active_payment:
+        period += active_payment['period']
+        update_status('inactive', active_payment['id'])
     query = 'insert into payments (user_id, channel, sum, period) values (?, ?, ?, ?)'
     return db.execute_query(query, user_id, channel, cost, period)
 
 
-def activate_sub(user_id: int, channel: int):
+def update_payment(user_id: int, channel: int):
     delta = "'+1 minute'" if config.test_mode else "'+' || period || ' days'"
     query = f'''
         update payments set start_date = ?, end_date = datetime(?, {delta}), status = 'active'

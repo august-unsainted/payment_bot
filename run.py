@@ -2,7 +2,7 @@ import asyncio
 from aiogram import Bot, Dispatcher
 
 from bot_config import config
-from handlers import start
+from handlers import start, subscriptions
 
 from config import TOKEN
 from utils.scheduler import start_scheduler
@@ -12,7 +12,7 @@ dp = Dispatcher()
 
 
 async def main():
-    dp.include_routers(start.router)
+    dp.include_routers(start.router, subscriptions.router)
     start_scheduler()
     config.include_routers(dp)
     print('Бот запущен!')

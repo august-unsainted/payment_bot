@@ -1,5 +1,4 @@
-from datetime import timedelta
-
+from datetime import timedelta, datetime
 from aiogram import Bot
 
 from bot_config import texts, config
@@ -11,6 +10,15 @@ start_kb = config.keyboards.get('start')
 
 def get_link(user_id: int | str, user_name: str) -> str:
     return f'<a href="tg://user?id={user_id}">{user_name}</a>'
+
+
+def get_date(date: str):
+    return datetime.strptime(date, '%Y-%m-%d %H:%M:%S')
+
+
+def format_date(date: str):
+    date = get_date(date)
+    return f'{date:%d.%m.%Y в %H:%M}'
 
 
 async def send_mess(bot: Bot, chat: int | str, text: str, kb=None):
