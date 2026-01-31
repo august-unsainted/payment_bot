@@ -5,6 +5,7 @@ from bot_config import config
 from handlers import start
 
 from config import TOKEN
+from utils.scheduler import start_scheduler
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
@@ -12,7 +13,7 @@ dp = Dispatcher()
 
 async def main():
     dp.include_routers(start.router)
-    start.scheduler.start()
+    start_scheduler()
     config.include_routers(dp)
     print('Бот запущен!')
     await dp.start_polling(bot, skip_updates=True)

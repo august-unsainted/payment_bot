@@ -13,11 +13,12 @@ def format_price(price: int) -> str:
     return formatted
 
 
-def generate_price_kb():
+def generate_price_kb(channel_name: str):
     data = {}
     for period, info in prices.items():
-        data[period] = f'{info['period'].capitalize()} — {format_price(info['cost'])}₽'
-    kb = config.generate_kb(None, data)
+        key = f'pay_{period}_{channel_name}'
+        data[key] = f'{info['period'].capitalize()} — {format_price(info['cost'])}₽'
+    kb = config.generate_kb('start', data)
     return kb
 
 
@@ -33,7 +34,8 @@ def load_price_messages():
         config.keyboards[key] = kb
 
 
-config.keyboards['start'] = generate_price_kb()
+for channel in ('draw', 'text'):
+    config.keyboards[channel] = generate_price_kb(channel)
 load_price_messages()
 config.load_messages()
 config.test_mode = True
