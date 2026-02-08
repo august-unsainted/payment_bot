@@ -7,9 +7,9 @@ from bot_constructor.utils_funcs import get_btn
 from bot_config import config, prices, format_price, texts
 from config import ADMIN, CHANNELS, CHANNELS_NAMES
 from utils.ai import convert_file, send_ai_request
-from utils.database import insert_payment, update_status, get_payment, update_payment
-from utils.scheduler import schedule_jobs, remove_job, activate_sub
-from utils.user_actions import get_link, remove_user, create_invite
+from utils.database import insert_payment, update_status, get_payment
+from utils.scheduler import activate_sub
+from utils.user_actions import get_link, create_invite
 
 router = Router()
 

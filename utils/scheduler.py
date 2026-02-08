@@ -2,7 +2,6 @@ from datetime import timedelta
 from pathlib import Path
 
 from aiogram import Bot
-from aiogram.types import User
 from apscheduler.jobstores.base import JobLookupError
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -24,10 +23,12 @@ def schedule_jobs(user_id: int, name: str, date: str, channel: int):
     end_date = get_date(date)
     delta = timedelta(seconds=30) if config.test_mode else timedelta(days=3)
     job_id = f'{user_id}_{channel}'
-    scheduler.add_job(id=f'{job_id}_notify', trigger='date', run_date=end_date - delta,
-                      func=notify_user, args=[user_id], replace_existing=True)
-    scheduler.add_job(id=job_id, trigger='date', run_date=end_date,
-                      func=remove_user, args=[user_id, name, channel], replace_existing=True)
+    args = {'trigger':            'date',
+            'misfire_grace_time': 60 * 60 * 72,
+            'replace_existing':   True
+            }
+    scheduler.add_job(id=f'{job_id}_notify', run_date=end_date - delta, func=notify_user, args=[user_id], **args)
+    scheduler.add_job(id=job_id, run_date=end_date, func=remove_user, args=[user_id, name, channel], **args)
 
 
 def remove_job(job_id: int | str):

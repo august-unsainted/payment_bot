@@ -17,8 +17,7 @@ def get_date(date: str):
 
 
 def format_date(date: str):
-    date = get_date(date)
-    return f'{date:%d.%m.%Y в %H:%M}'
+    return f'{get_date(date):%d.%m.%Y в %H:%M}' if date else 'Никогда'
 
 
 async def send_mess(bot: Bot, chat: int | str, text: str, kb=None):
