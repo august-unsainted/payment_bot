@@ -33,7 +33,8 @@ async def send_ai_request(file: bytes) -> str | None:
                 model=AI_MODEL,
                 messages=[
                     {"role": "user", "content": [{"type": "text", "text": SYSTEM_PROMPT}, data]}
-                ])
+                ],
+                timeout=20)
             answer = completion.choices[0].message.content
             return answer
         except RateLimitError:

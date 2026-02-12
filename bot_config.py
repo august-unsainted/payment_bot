@@ -1,7 +1,7 @@
 from copy import deepcopy
 from bot_constructor.bot_config import BotConfig
 
-from config import CHANNELS_NAMES
+from config import CHANNELS_NAMES, CHANNELS
 
 config = BotConfig(name_in_start=True)
 db = config.db
@@ -22,22 +22,17 @@ def generate_price_kb(channel_name: str):
     return kb
 
 
-def load_price_messages():
-    template = deepcopy(config.messages.get('price'))
-    for key, data in prices.items():
-        period, price, days = data.values()
-        price = format_price(price)
-        config.texts[key] = template['text'].format(period, price)
-        kb = deepcopy(template.get('reply_markup'))
-        btn = kb.inline_keyboard[0][0]
-        btn.text, btn.callback_data = btn.text.format(price), f'pay_{key}'
-        config.keyboards[key] = kb
+def load_notify_keyboards():
+    for name, chat_id in CHANNELS.items():
+        kb = deepcopy(config.keyboards.get(name))
+        del kb.inline_keyboard[-1]
+        config.keyboards[chat_id] = kb
 
 
 for channel in CHANNELS_NAMES.keys():
     config.keyboards[channel] = generate_price_kb(channel)
 
-load_price_messages()
+load_notify_keyboards()
 config.load_messages()
 config.test_mode = True
 texts = config.texts

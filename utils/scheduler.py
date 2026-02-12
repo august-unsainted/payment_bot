@@ -27,7 +27,7 @@ def schedule_jobs(user_id: int, name: str, date: str, channel: int):
             'misfire_grace_time': 60 * 60 * 72,
             'replace_existing':   True
             }
-    scheduler.add_job(id=f'{job_id}_notify', run_date=end_date - delta, func=notify_user, args=[user_id], **args)
+    scheduler.add_job(id=f'{job_id}_notify', run_date=end_date - delta, func=notify_user, args=[user_id, channel], **args)
     scheduler.add_job(id=job_id, run_date=end_date, func=remove_user, args=[user_id, name, channel], **args)
 
 

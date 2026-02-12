@@ -21,8 +21,9 @@ class PayStates(StatesGroup):
 @router.callback_query(F.data.startswith('pay'))
 async def get_requisites(callback: CallbackQuery, state: FSMContext):
     category, channel = callback.data.split('_')[1:]
-    kb = InlineKeyboardMarkup(inline_keyboard=[[get_btn(category)]])
-    await config.handle_message(callback, {'text': texts.get('pay'), 'reply_markup': kb})
+    cost = format_price(prices[category]['cost'])
+    kb = InlineKeyboardMarkup(inline_keyboard=[[get_btn(channel)]])
+    await config.handle_message(callback, {'text': texts.get('pay').format(cost), 'reply_markup': kb})
     await state.clear()
     await state.update_data(message=callback.message.message_id, category=category, channel=channel)
     await state.set_state(PayStates.pay)
