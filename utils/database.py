@@ -25,7 +25,7 @@ def update_payment(user_id: int, channel: int):
             end_date =
             case
                 when period is null then null
-                else datetime(?, {delta}),
+                else datetime(?, {delta})
             end,
             status = 'active'
         where user_id = ? and channel = ? and start_date is null and status = "accepted"

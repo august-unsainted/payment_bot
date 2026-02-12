@@ -1,7 +1,7 @@
 from aiogram import Router, F, Bot
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, ChatMemberUpdated, User
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, ChatMemberUpdated, BufferedInputFile
 from bot_constructor.utils_funcs import get_btn
 
 from bot_config import config, prices, format_price, texts
@@ -28,11 +28,12 @@ async def get_requisites(callback: CallbackQuery, state: FSMContext):
     await state.set_state(PayStates.pay)
 
 
-@router.message(PayStates.pay and F.text != '/start')
+@router.message(PayStates.pay, F.text != '/start', F.chat.id != ADMIN)
 async def forward_pay(message: Message, state: FSMContext, bot: Bot):
     data = await state.get_data()
     args = {'chat_id': message.chat.id, 'message_id': data.get('message'), 'parse_mode': 'HTML'}
-    if not (message.document or message.photo):
+    is_pdf = message.document and message.document.file_name.endswith('pdf')
+    if not (message.photo or is_pdf):
         answer = texts.get('pay') + '\n\n' + texts.get('type_validation_error')
         kb = InlineKeyboardMarkup(inline_keyboard=[[get_btn(data.get('category'))]])
         await state.set_state(PayStates.pay)
@@ -51,7 +52,10 @@ async def forward_pay(message: Message, state: FSMContext, bot: Bot):
 
     message_file = message.photo[-1] if message.photo else message.document
     file = (await bot.download(file=message_file)).read()
-    photo = convert_file(file, message)
+    photo = message_file.file_id
+    if not message.photo:
+        file = convert_file(file)
+        photo = BufferedInputFile(file=file, filename='check.png')
     answer = await send_ai_request(file)
 
     user_link = get_link(user.id, user.first_name)
@@ -85,13 +89,9 @@ async def answer_pay(callback: CallbackQuery, bot: Bot):
     await callback.message.edit_caption(caption=text + f'\n\nПлатеж {status}!')
 
 
-@router.callback_query(F.data == 'promo')
-async def get_promo(callback: CallbackQuery, state: FSMContext):
-    pass
-
-
-@router.chat_member(F.chat.id.in_(CHANNELS.values()) and
-                    F.old_chat_member.status == 'left' and F.new_chat_member.status == "member")
+@router.chat_member(F.chat.id.in_(CHANNELS.values()),
+                    F.old_chat_member.status == 'left',
+                    F.new_chat_member.status == "member")
 async def chat_member_updated(event: ChatMemberUpdated):
     user = event.new_chat_member.user
     await activate_sub(user.id, user.first_name, event.chat.id, event.bot)

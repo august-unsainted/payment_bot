@@ -1,8 +1,6 @@
 import fitz
 import asyncio
 import base64
-
-from aiogram.types import Message, BufferedInputFile
 from openai import OpenAI, RateLimitError
 from pathlib import Path
 
@@ -15,13 +13,9 @@ file_dir = Path().cwd() / 'data/images'
 client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=AI_KEY)
 
 
-def convert_file(file: bytes, message: Message):
-    message_file = message.photo[-1] if message.photo else message.document
-    if not message.document:
-        return message_file.file_id
+def convert_file(file: bytes):
     doc = fitz.open(stream=file, filetype="pdf")
-    image_bytes = doc.load_page(0).get_pixmap(dpi=150).tobytes()
-    return BufferedInputFile(file=image_bytes, filename='check.png')
+    return doc.load_page(0).get_pixmap(dpi=150).tobytes()
 
 
 def generate_content(file: bytes) -> dict[str, str]:

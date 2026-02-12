@@ -1,6 +1,4 @@
 from copy import deepcopy
-from datetime import datetime
-
 from bot_constructor.bot_config import BotConfig
 
 from config import CHANNELS_NAMES
