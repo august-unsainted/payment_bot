@@ -8,8 +8,8 @@ from bot_config import config, prices, format_price, texts
 from config import ADMIN, CHANNELS, CHANNELS_NAMES
 from utils.ai import convert_file, send_ai_request
 from utils.database import insert_payment, update_status, get_payment
-from utils.scheduler import activate_sub
-from utils.user_actions import get_link, create_invite
+from utils.scheduler import activate_sub, remove_job
+from utils.user_actions import get_link, create_invite, format_event_message
 
 router = Router()
 
@@ -61,7 +61,7 @@ async def forward_pay(message: Message, state: FSMContext, bot: Bot):
 
     user_link = get_link(user.id, user.first_name)
     info = texts.get('check_pay').format(user_link, days, CHANNELS_NAMES[channel], format_price(cost))
-    caption = f'{info}\n{answer}\n\n<blockquote>{message.caption or ''}</blockquote>'
+    caption = f'{info}\n{answer}\n<blockquote>{message.caption or ''}</blockquote>'
     await bot.send_photo(photo=photo, chat_id=ADMIN, reply_markup=kb, parse_mode='HTML', caption=caption)
 
 
@@ -78,21 +78,25 @@ async def answer_pay(callback: CallbackQuery, bot: Bot):
         member = await bot.get_chat_member(channel, int(user_id))
         if member.status == 'member':
             user = await bot.get_chat(user_id)
-            await activate_sub(user.id, user.first_name, channel, bot)
+            await activate_sub(user, 'extend', channel, bot)
             kb = None
             action = 'extended'
         else:
             kb.inline_keyboard[0][0].url = await create_invite(bot, channel, user_id)
         await bot.unban_chat_member(chat_id=channel, user_id=user_id, only_if_banned=True)
     await bot.send_message(chat_id=user_id, text=texts.get(f'pay_{action}'), reply_markup=kb)
-    text = callback.message.caption or ''
+    text = callback.message.html_text or ''
     status = 'принят' if accepted else 'отклонен'
-    await callback.message.edit_caption(caption=text + f'\n\nПлатеж {status}!')
+    await callback.message.edit_caption(caption=text + f'\n\nПлатеж {status}!', parse_mode='HTML')
 
 
-@router.chat_member(F.chat.id.in_(CHANNELS.values()),
-                    F.old_chat_member.status == 'left',
-                    F.new_chat_member.status == "member")
-async def chat_member_updated(event: ChatMemberUpdated):
-    user = event.new_chat_member.user
-    await activate_sub(user.id, user.first_name, event.chat.id, event.bot)
+@router.chat_member(F.chat.id.in_(CHANNELS.values()))
+async def chat_member_updated(event: ChatMemberUpdated, bot: Bot):
+    user = event.from_user
+    chat = event.chat.id
+    if event.old_chat_member.status == 'left' and event.new_chat_member.status == "member":
+        await activate_sub(user, 'join', chat, bot)
+    elif event.old_chat_member.status == 'member' and event.new_chat_member.status == 'left':
+        text = format_event_message('left', chat, user)
+        await bot.send_message(chat_id=ADMIN, text=text, parse_mode='HTML')
+        remove_job(user.id)

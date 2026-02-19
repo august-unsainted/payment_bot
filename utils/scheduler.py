@@ -2,14 +2,15 @@ from datetime import timedelta
 from pathlib import Path
 
 from aiogram import Bot
+from aiogram.types import User
 from apscheduler.jobstores.base import JobLookupError
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from bot_config import config, texts
+from bot_config import config
 from config import ADMIN
 from utils.database import update_payment
-from utils.user_actions import notify_user, remove_user, get_date, get_link
+from utils.user_actions import notify_user, remove_user, get_date, format_event_message
 
 jobstores = {'default': SQLAlchemyJobStore(url=f'sqlite:///{Path().cwd() / 'data/bot.db'}')}
 scheduler = AsyncIOScheduler(timezone='Asia/Irkutsk', jobstores=jobstores)
@@ -21,7 +22,7 @@ def start_scheduler():
 
 def schedule_jobs(user_id: int, name: str, date: str, channel: int):
     end_date = get_date(date)
-    delta = timedelta(seconds=30) if config.test_mode else timedelta(days=3)
+    delta = timedelta(seconds=110) if config.test_mode else timedelta(days=3)
     job_id = f'{user_id}_{channel}'
     args = {'trigger':            'date',
             'misfire_grace_time': 60 * 60 * 72,
@@ -32,13 +33,15 @@ def schedule_jobs(user_id: int, name: str, date: str, channel: int):
 
 
 def remove_job(job_id: int | str):
-    try:
-        scheduler.remove_job(job_id)
-    except JobLookupError:
-        pass
+    for job in (job_id, f'{job_id}_notify'):
+        try:
+            scheduler.remove_job(job)
+        except JobLookupError:
+            pass
 
 
-async def activate_sub(user_id: int, name: str, chat: int, bot: Bot):
+async def activate_sub(user: User, action: str, chat: int, bot: Bot):
+    user_id, name = user.id, user.first_name
     result = update_payment(user_id, chat)
     if not result:
         await remove_user(user_id, name, chat)
@@ -47,5 +50,5 @@ async def activate_sub(user_id: int, name: str, chat: int, bot: Bot):
     end_date = result[0]['end_date']
     if end_date:
         schedule_jobs(user_id, name, end_date, chat)
-    text = texts.get('user_join').format(get_link(user_id, name))
+    text = format_event_message(action, chat, user)
     await bot.send_message(chat_id=ADMIN, text=text, parse_mode='HTML')

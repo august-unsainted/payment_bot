@@ -1,5 +1,6 @@
 from datetime import timedelta, datetime
 from aiogram import Bot
+from aiogram.types import User
 
 from bot_config import texts, config
 from config import TOKEN, ADMIN, CHANNELS_REVERSED
@@ -25,7 +26,7 @@ async def send_mess(bot: Bot, chat: int | str, text: str, kb=None):
 async def remove_user(user_id: int | str, user_name: str, channel_id: int):
     set_inactive(user_id, channel_id)
     async with Bot(token=TOKEN) as bot:
-        admin_text = texts.get('user_ban').format(get_link(user_id, user_name))
+        admin_text = format_event_message('ban', channel_id, user_id=user_id, user_name=user_name)
         await send_mess(bot, ADMIN, admin_text)
         await send_mess(bot, user_id, texts.get('sub_expired').format(CHANNELS_REVERSED[channel_id]),
                         config.keyboards.get(channel_id))
@@ -42,3 +43,9 @@ async def create_invite(bot: Bot, chat: int, user: str) -> str:
     invite_link = await bot.create_chat_invite_link(chat_id=chat, name=f'bot_{user}', member_limit=1,
                                                     expire_date=timedelta(days=6))
     return invite_link.invite_link
+
+
+def format_event_message(action: str, chat: int, user: User = None, user_id: int = None, user_name: str = None):
+    if user:
+        user_id, user_name = user.id, user.first_name
+    return texts.get(f'user_{action}').format(get_link(user_id, user_name), CHANNELS_REVERSED[chat])

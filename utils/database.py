@@ -18,7 +18,7 @@ def insert_payment(cost: int, period: int, user_id: int, channel: int) -> int:
 
 
 def update_payment(user_id: int, channel: int):
-    delta = "'+1 minute'" if config.test_mode else "'+' || period || ' days'"
+    delta = "'+2 minute'" if config.test_mode else "'+' || period || ' days'"
     query = f'''
         update payments
         set start_date = ?,
