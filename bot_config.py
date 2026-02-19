@@ -1,7 +1,7 @@
 from copy import deepcopy
 from bot_constructor.bot_config import BotConfig
 
-from config import CHANNELS_NAMES, CHANNELS
+from config import CHANNELS_NAMES, CHANNELS, PHOTO
 
 config = BotConfig(name_in_start=True)
 db = config.db
@@ -35,4 +35,5 @@ for channel in CHANNELS_NAMES.keys():
 load_notify_keyboards()
 config.load_messages()
 config.test_mode = True
+config.messages['start']['media'].media = config.messages['cmd_start']['photo'] = PHOTO
 texts = config.texts
