@@ -10,7 +10,8 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from bot_config import config
 from config import ADMIN
 from utils.database import update_payment
-from utils.user_actions import notify_user, remove_user, get_date, format_event_message
+from utils.date_funcs import get_date
+from utils.user_actions import notify_user, remove_user, format_event_message
 
 jobstores = {'default': SQLAlchemyJobStore(url=f'sqlite:///{Path().cwd() / 'data/bot.db'}')}
 scheduler = AsyncIOScheduler(timezone='Asia/Irkutsk', jobstores=jobstores)
@@ -22,7 +23,7 @@ def start_scheduler():
 
 def schedule_jobs(user_id: int, name: str, date: str, channel: int):
     end_date = get_date(date)
-    delta = timedelta(seconds=110) if config.test_mode else timedelta(days=3)
+    delta = timedelta(seconds=30) if config.test_mode else timedelta(days=3)
     job_id = f'{user_id}_{channel}'
     args = {'trigger':            'date',
             'misfire_grace_time': 60 * 60 * 72,
@@ -46,9 +47,10 @@ async def activate_sub(user: User, action: str, chat: int, bot: Bot):
     if not result:
         await remove_user(user_id, name, chat)
         return
-    remove_job(user_id)
     end_date = result[0]['end_date']
     if end_date:
         schedule_jobs(user_id, name, end_date, chat)
+    else:
+        remove_job(f'{user_id}_{chat}')
     text = format_event_message(action, chat, user)
     await bot.send_message(chat_id=ADMIN, text=text, parse_mode='HTML')

@@ -1,5 +1,5 @@
-import locale
-from datetime import timedelta, datetime
+from datetime import timedelta
+
 from aiogram import Bot
 from aiogram.types import User
 
@@ -7,21 +7,11 @@ from bot_config import texts, config, prices
 from config import TOKEN, ADMIN
 from utils.channels import find_channel_name, Channel, CHANNELS_BY_CHAT
 from utils.database import set_inactive, get_payment
-
-
-locale.setlocale(locale.LC_ALL, 'ru_RU.UTF-8')
+from utils.date_funcs import format_date
 
 
 def get_link(user_id: int | str, user_name: str) -> str:
     return f'<a href="tg://user?id={user_id}">{user_name}</a>'
-
-
-def get_date(date: str):
-    return datetime.strptime(date, '%Y-%m-%d %H:%M:%S')
-
-
-def format_date(date: str):
-    return f'{get_date(date):%d %B в %H:%M}' if date else 'Никогда'
 
 
 async def send_mess(bot: Bot, chat: int | str, text: str, kb=None):
@@ -38,16 +28,16 @@ def format_sub(sub, channel: Channel = None):
 
 
 async def remove_user(user_id: int | str, user_name: str, channel_id: int):
-    admin_text = format_event_message('ban', channel_id, user_id=user_id, user_name=user_name)
-    subs = set_inactive(user_id, channel_id)
-    if subs:
-        sub = get_payment(subs[0]['id'])
-        admin_text += '\n\n' + format_sub(sub)
     async with Bot(token=TOKEN) as bot:
+        await bot.ban_chat_member(chat_id=channel_id, user_id=user_id)
+        admin_text = format_event_message('ban', channel_id, user_id=user_id, user_name=user_name)
+        subs = set_inactive(user_id, channel_id)
+        if subs:
+            sub = get_payment(subs[0]['id'])
+            admin_text += '\n\n' + format_sub(sub)
         await send_mess(bot, ADMIN, admin_text)
         await send_mess(bot, user_id, texts.get('sub_expired').format(find_channel_name(channel_id)),
                         config.keyboards.get(channel_id))
-        await bot.ban_chat_member(chat_id=channel_id, user_id=user_id)
 
 
 async def notify_user(user_id: int | str, channel_id: int):

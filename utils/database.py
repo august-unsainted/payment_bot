@@ -1,5 +1,6 @@
 from datetime import datetime
 from bot_config import db, config, prices
+from utils.date_funcs import get_date
 
 
 def get_active_sub(user_id: int, channel: int):
@@ -9,25 +10,27 @@ def get_active_sub(user_id: int, channel: int):
 
 
 def insert_payment(period: str, user_id: int, channel: int) -> int:
-    active_payment = get_active_sub(user_id, channel)
     price = prices[period]
     cost, days = price['cost'], price['days']
+    active_payment = get_active_sub(user_id, channel)
+    end_date = None
     if active_payment:
-        days += active_payment['days']
+        end_date = active_payment['end_date']
         update_status('inactive', active_payment['id'])
-    query = 'insert into payments (user_id, channel, period, sum, days) values (?, ?, ?, ?, ?)'
-    return db.execute_query(query, user_id, channel, period, cost, days)
+    query = 'insert into payments (user_id, channel, period, sum, days, end_date) values (?, ?, ?, ?, ?, ?)'
+    return db.execute_query(query, user_id, channel, period, cost, days, end_date)
 
 
 def update_payment(user_id: int, channel: int):
-    delta = "'+2 minute'" if config.test_mode else "'+' || days || ' days'"
+    delta = "'+1 minute'" if config.test_mode else "'+' || days || ' days'"
     query = f'''
         update payments
         set start_date = ?,
             end_date =
             case
                 when days is null then null
-                else datetime(?, {delta})
+                when end_date is null then datetime(?, {delta})
+                else datetime(end_date, {delta})
             end,
             status = 'active'
         where user_id = ? and channel = ? and start_date is null and status = "accepted"
@@ -37,9 +40,9 @@ def update_payment(user_id: int, channel: int):
     return db.execute_query(query, start_date, start_date, user_id, channel)
 
 
-def set_inactive(value: int, channel: int):
+def set_inactive(user_id: int, channel: int):
     query = f'update payments set status = "inactive" where user_id = ? and channel = ? and status = "active" returning id'
-    return db.execute_query(query, value, channel)
+    return db.execute_query(query, user_id, channel)
 
 
 def update_status(status: str, pay_id: str):
