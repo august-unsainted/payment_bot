@@ -61,7 +61,9 @@ async def forward_pay(message: Message, state: FSMContext, bot: Bot):
 
     user_link = get_link(user.id, user.first_name)
     info = texts.get('check_pay').format(user_link, days, CHANNELS_NAMES[channel], format_price(cost))
-    caption = f'{info}\n{answer}\n<blockquote>{message.caption or ''}</blockquote>'
+    caption = f'{info}\n{answer}'
+    if message.caption:
+        caption += f'\n<b>Прикреплённое сообщение:</b><blockquote>{message.html_text or ''}</blockquote>'
     await bot.send_photo(photo=photo, chat_id=ADMIN, reply_markup=kb, parse_mode='HTML', caption=caption)
 
 

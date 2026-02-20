@@ -1,7 +1,7 @@
 import fitz
 import asyncio
 import base64
-from openai import OpenAI, RateLimitError
+from openai import AsyncOpenAI, RateLimitError
 from pathlib import Path
 
 from config import AI_KEY, SYSTEM_PROMPT, AI_MODEL
@@ -10,7 +10,7 @@ sleep = 5
 max_retries = 3
 timeout = 60
 file_dir = Path().cwd() / 'data/images'
-client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=AI_KEY)
+client = AsyncOpenAI(base_url="https://openrouter.ai/api/v1", api_key=AI_KEY)
 
 
 def convert_file(file: bytes):
@@ -29,7 +29,7 @@ async def send_ai_request(file: bytes) -> str | None:
     for attempt in range(max_retries):
         data = generate_content(file)
         try:
-            completion = client.chat.completions.create(
+            completion = await client.chat.completions.create(
                 model=AI_MODEL,
                 messages=[
                     {"role": "user", "content": [{"type": "text", "text": SYSTEM_PROMPT}, data]}
