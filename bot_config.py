@@ -1,7 +1,8 @@
 from copy import deepcopy
 from bot_constructor.bot_config import BotConfig
 
-from config import CHANNELS_NAMES, CHANNELS, PHOTO
+from config import PHOTO
+from utils.channels import CHANNELS
 
 config = BotConfig(name_in_start=True)
 db = config.db
@@ -22,17 +23,15 @@ def generate_price_kb(channel_name: str):
     return kb
 
 
-def load_notify_keyboards():
-    for name, chat_id in CHANNELS.items():
-        kb = deepcopy(config.keyboards.get(name))
+def load_keyboards():
+    for channel in CHANNELS:
+        kb = generate_price_kb(channel.callback)
+        config.keyboards[channel.callback] = deepcopy(kb)
         del kb.inline_keyboard[-1]
-        config.keyboards[chat_id] = kb
+        config.keyboards[channel.chat_id] = kb
 
 
-for channel in CHANNELS_NAMES.keys():
-    config.keyboards[channel] = generate_price_kb(channel)
-
-load_notify_keyboards()
+load_keyboards()
 config.load_messages()
 config.test_mode = True
 config.messages['start']['media'].media = config.messages['cmd_start']['photo'] = PHOTO

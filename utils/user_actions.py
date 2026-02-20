@@ -3,7 +3,8 @@ from aiogram import Bot
 from aiogram.types import User
 
 from bot_config import texts, config
-from config import TOKEN, ADMIN, CHANNELS_REVERSED
+from config import TOKEN, ADMIN
+from utils.channels import find_channel_name
 from utils.database import set_inactive
 
 
@@ -28,15 +29,15 @@ async def remove_user(user_id: int | str, user_name: str, channel_id: int):
     async with Bot(token=TOKEN) as bot:
         admin_text = format_event_message('ban', channel_id, user_id=user_id, user_name=user_name)
         await send_mess(bot, ADMIN, admin_text)
-        await send_mess(bot, user_id, texts.get('sub_expired').format(CHANNELS_REVERSED[channel_id]),
+        await send_mess(bot, user_id, texts.get('sub_expired').format(find_channel_name(channel_id)),
                         config.keyboards.get(channel_id))
         await bot.ban_chat_member(chat_id=channel_id, user_id=user_id)
 
 
-async def notify_user(user_id: int | str, channel: int):
+async def notify_user(user_id: int | str, channel_id: int):
     async with Bot(token=TOKEN) as bot:
-        await send_mess(bot, user_id, texts.get('user_notify').format(CHANNELS_REVERSED[channel]),
-                        config.keyboards.get(channel))
+        channel_name = find_channel_name(channel_id)
+        await send_mess(bot, user_id, texts.get('user_notify').format(channel_name), config.keyboards.get(channel_id))
 
 
 async def create_invite(bot: Bot, chat: int, user: str) -> str:
@@ -48,4 +49,4 @@ async def create_invite(bot: Bot, chat: int, user: str) -> str:
 def format_event_message(action: str, chat: int, user: User = None, user_id: int = None, user_name: str = None):
     if user:
         user_id, user_name = user.id, user.first_name
-    return texts.get(f'user_{action}').format(get_link(user_id, user_name), CHANNELS_REVERSED[chat])
+    return texts.get(f'user_{action}').format(get_link(user_id, user_name), find_channel_name(chat))

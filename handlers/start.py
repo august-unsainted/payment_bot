@@ -5,8 +5,9 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, ChatMemb
 from bot_constructor.utils_funcs import get_btn
 
 from bot_config import config, prices, format_price, texts
-from config import ADMIN, CHANNELS, CHANNELS_NAMES
+from config import ADMIN, CHANNELS_IDS
 from utils.ai import convert_file, send_ai_request
+from utils.channels import find_by_callback
 from utils.database import insert_payment, update_status, get_payment
 from utils.scheduler import activate_sub, remove_job
 from utils.user_actions import get_link, create_invite, format_event_message
@@ -45,10 +46,10 @@ async def forward_pay(message: Message, state: FSMContext, bot: Bot):
     await state.clear()
     user = message.from_user
     days, cost, period = prices.get(data.get('category')).values()
-    channel = data.get('channel')
-    payment_id = insert_payment(cost, period, user.id, CHANNELS[channel])
+    channel = find_by_callback(data.get('channel'))
+    payment_id = insert_payment(cost, period, user.id, channel.chat_id)
     kb = config.edit_keyboard(payment_id, 'check_pay')
-    await bot.edit_message_text(text=texts.get('pay_process'), **args)
+    await bot.edit_message_text(text=texts.get('pay_process'), reply_markup=config.keyboards.get('to_start'), **args)
     await message.delete()
 
     message_file = message.photo[-1] if message.photo else message.document
@@ -60,7 +61,7 @@ async def forward_pay(message: Message, state: FSMContext, bot: Bot):
     answer = await send_ai_request(file)
 
     user_link = get_link(user.id, user.first_name)
-    info = texts.get('check_pay').format(user_link, days, CHANNELS_NAMES[channel], format_price(cost))
+    info = texts.get('check_pay').format(user_link, days, channel.name, format_price(cost))
     caption = f'{info}\n{answer}'
     if message.caption:
         caption += f'\n<b>Прикреплённое сообщение:</b><blockquote>{message.html_text or ''}</blockquote>'
@@ -92,7 +93,7 @@ async def answer_pay(callback: CallbackQuery, bot: Bot):
     await callback.message.edit_caption(caption=text + f'\n\nПлатеж {status}!', parse_mode='HTML')
 
 
-@router.chat_member(F.chat.id.in_(CHANNELS.values()))
+@router.chat_member(F.chat.id.in_(CHANNELS_IDS))
 async def chat_member_updated(event: ChatMemberUpdated, bot: Bot):
     user = event.from_user
     chat = event.chat.id
