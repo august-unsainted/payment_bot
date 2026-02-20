@@ -1,5 +1,5 @@
 from datetime import datetime
-from bot_config import db, config
+from bot_config import db, config, prices
 
 
 def get_active_sub(user_id: int, channel: int):
@@ -8,23 +8,25 @@ def get_active_sub(user_id: int, channel: int):
     return subs[0] if subs else None
 
 
-def insert_payment(cost: int, period: int, user_id: int, channel: int) -> int:
+def insert_payment(period: str, user_id: int, channel: int) -> int:
     active_payment = get_active_sub(user_id, channel)
+    price = prices[period]
+    cost, days = price['cost'], price['days']
     if active_payment:
-        period += active_payment['period']
+        days += active_payment['days']
         update_status('inactive', active_payment['id'])
-    query = 'insert into payments (user_id, channel, sum, period) values (?, ?, ?, ?)'
-    return db.execute_query(query, user_id, channel, cost, period)
+    query = 'insert into payments (user_id, channel, period, sum, days) values (?, ?, ?, ?, ?)'
+    return db.execute_query(query, user_id, channel, period, cost, days)
 
 
 def update_payment(user_id: int, channel: int):
-    delta = "'+2 minute'" if config.test_mode else "'+' || period || ' days'"
+    delta = "'+2 minute'" if config.test_mode else "'+' || days || ' days'"
     query = f'''
         update payments
         set start_date = ?,
             end_date =
             case
-                when period is null then null
+                when days is null then null
                 else datetime(?, {delta})
             end,
             status = 'active'
@@ -36,8 +38,8 @@ def update_payment(user_id: int, channel: int):
 
 
 def set_inactive(value: int, channel: int):
-    query = f'update payments set status = "inactive" where user_id = ? and channel = ? and status = "active"'
-    db.execute_query(query, value, channel)
+    query = f'update payments set status = "inactive" where user_id = ? and channel = ? and status = "active" returning id'
+    return db.execute_query(query, value, channel)
 
 
 def update_status(status: str, pay_id: str):
@@ -46,4 +48,3 @@ def update_status(status: str, pay_id: str):
 
 def get_payment(pay_id: str):
     return db.execute_query('select * from payments where id = ?', pay_id)[0]
-

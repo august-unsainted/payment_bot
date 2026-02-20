@@ -45,9 +45,10 @@ async def forward_pay(message: Message, state: FSMContext, bot: Bot):
 
     await state.clear()
     user = message.from_user
-    days, cost, period = prices.get(data.get('category')).values()
+    category = data.get('category')
+    period, cost, days = prices.get(category).values()
     channel = find_by_callback(data.get('channel'))
-    payment_id = insert_payment(cost, period, user.id, channel.chat_id)
+    payment_id = insert_payment(category, user.id, channel.chat_id)
     kb = config.edit_keyboard(payment_id, 'check_pay')
     await bot.edit_message_text(text=texts.get('pay_process'), reply_markup=config.keyboards.get('to_start'), **args)
     await message.delete()
@@ -61,7 +62,7 @@ async def forward_pay(message: Message, state: FSMContext, bot: Bot):
     answer = await send_ai_request(file)
 
     user_link = get_link(user.id, user.first_name)
-    info = texts.get('check_pay').format(user_link, days, channel.name, format_price(cost))
+    info = texts.get('check_pay').format(user_link, period, channel.name, format_price(cost))
     caption = f'{info}\n{answer}'
     if message.caption:
         caption += f'\n<b>Прикреплённое сообщение:</b><blockquote>{message.html_text or ''}</blockquote>'

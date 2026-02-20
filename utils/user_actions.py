@@ -1,11 +1,15 @@
+import locale
 from datetime import timedelta, datetime
 from aiogram import Bot
 from aiogram.types import User
 
-from bot_config import texts, config
+from bot_config import texts, config, prices
 from config import TOKEN, ADMIN
-from utils.channels import find_channel_name
-from utils.database import set_inactive
+from utils.channels import find_channel_name, Channel, CHANNELS_BY_CHAT
+from utils.database import set_inactive, get_payment
+
+
+locale.setlocale(locale.LC_ALL, 'ru_RU.UTF-8')
 
 
 def get_link(user_id: int | str, user_name: str) -> str:
@@ -17,17 +21,29 @@ def get_date(date: str):
 
 
 def format_date(date: str):
-    return f'{get_date(date):%d.%m.%Y в %H:%M}' if date else 'Никогда'
+    return f'{get_date(date):%d %B в %H:%M}' if date else 'Никогда'
 
 
 async def send_mess(bot: Bot, chat: int | str, text: str, kb=None):
     await bot.send_message(chat_id=chat, text=text, reply_markup=kb, parse_mode='HTML')
 
 
+def format_sub(sub, channel: Channel = None):
+    if not channel:
+        channel = CHANNELS_BY_CHAT[int(sub['channel'])]
+    clean_id = str(channel.chat_id)[4:]
+    dates = [format_date(sub[f'{date}_date']) for date in ('start', 'end')]
+    price_info = prices.get(sub['period'])
+    return texts.get('about_sub').format(clean_id, channel.name, price_info['period'], price_info['cost'], *dates)
+
+
 async def remove_user(user_id: int | str, user_name: str, channel_id: int):
-    set_inactive(user_id, channel_id)
+    admin_text = format_event_message('ban', channel_id, user_id=user_id, user_name=user_name)
+    subs = set_inactive(user_id, channel_id)
+    if subs:
+        sub = get_payment(subs[0]['id'])
+        admin_text += '\n\n' + format_sub(sub)
     async with Bot(token=TOKEN) as bot:
-        admin_text = format_event_message('ban', channel_id, user_id=user_id, user_name=user_name)
         await send_mess(bot, ADMIN, admin_text)
         await send_mess(bot, user_id, texts.get('sub_expired').format(find_channel_name(channel_id)),
                         config.keyboards.get(channel_id))
@@ -35,8 +51,8 @@ async def remove_user(user_id: int | str, user_name: str, channel_id: int):
 
 
 async def notify_user(user_id: int | str, channel_id: int):
+    channel_name = find_channel_name(channel_id)
     async with Bot(token=TOKEN) as bot:
-        channel_name = find_channel_name(channel_id)
         await send_mess(bot, user_id, texts.get('user_notify').format(channel_name), config.keyboards.get(channel_id))
 
 
